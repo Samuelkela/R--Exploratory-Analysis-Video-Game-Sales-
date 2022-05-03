@@ -1,0 +1,176 @@
+---
+title: "Video Game Analysis"
+author: "Samuel Enokela"
+date: "5/3/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+Data Visualization - Video Games sales
+Exploratory Analysis Using R
+By Samuel Enokela
+03/05/2022
+1)Introduction
+The aim of this analysis is to develop insights from the video game sales data using R programming language. The data is in '.csv' format and covers a time span between 1980 to 2020.
+
+2) Loading Libraries
+The below libraries were used
+tidyverse
+ggplot2
+hrbrthemes
+viridis
+The last two libraries were used for theme and colour gradient in the plots.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(viridis)
+library(hrbrthemes)
+```
+
+Importing and Cleaning Data
+
+```{r}
+vg_data <- read.csv('C:/Users/samen/Desktop/Data Analysis/R/Video Game Analysis/vgsales.csv')
+head(vg_data)
+str(vg_data)
+
+```
+Though the file has data between 1980 - 2020, there are only three observations for 2017, one for 2020 and none for the years 2018 and 2019. Therefore we will move on with our analysis for the duration between 1980 - 2016.
+
+Also there are NA values in Year and Publisher column but its representation is in the form of N/A. We will replace these N/A values with NA so that it can be read as NA. Also we will count the NAs in the df.
+
+```{r}
+vg_data[vg_data == "N/A"] <- NA
+vg_data %>% summarise(across(everything(), ~sum(is.na(.))))
+```
+
+```{r}
+vg_data_cleaned <- subset(vg_data, Year != 2017 & Year != 2020) %>%
+  drop_na(Year)
+
+vg_data_cleaned$Year <- as.numeric(vg_data_cleaned$Year)
+head(vg_data_cleaned)
+```
+
+Data has been cleaned by dropping rows for years 2017,2020 and rows with as NA.
+
+Publisher with NA values were not dropped as it will not affect the analysis
+
+```{r}
+#checking for duplicates
+sum(duplicated(vg_data_cleaned))
+
+```
+No duplicates found
+
+
+4. Visualization and Insights
+4.1 Number of games sold each (Based on Genre)
+```{r}
+vg_data_cleaned %>% group_by(Year, Genre) %>% summarize(total = n()) %>% ggplot(aes(x = Year, y =total, fill = Genre)) + geom_bar(position = "stack", stat = "identity") + scale_fill_viridis(discrete = T) + labs(tittle = "Total games per year stacked" , y = "Count")
+
+theme_bw()
+```
+
+```{r}
+vg_data_cleaned %>% group_by(Year, Genre) %>% summarise(total = n()) %>% ggplot(aes(x = Year, y = total, color = Genre)) + 
+  geom_point(size = 2.5) + 
+  geom_line(size = 1) + 
+  scale_color_manual (values = c("#F6573D", "#999999", "#E69F00", "#56B4E9", "#79605B", "#0A8222", "#32B491","#0F40B2", "#7B808A", "#9D29D6","#C11E83", "#CBDE0B"))
+
+labs(title = "Game count by Genre per Year") + theme_bw()
+```
+
+summarize() has grouped output per "Year". You can override sing the '.groups' argument
+
+The stacked bar plot shows that the overall sales of video game increased drastically over the period 1990 to 2008 and then started to decline after that. For the last 10 years the sale was dominated by 'Action' genre which can also be seen from line plot of total games sold based on genre.
+
+
+4.2 Sales Plot
+Global Sales Plot
+
+```{r}
+vg_data_cleaned %>% group_by(Year) %>% summarise(total_global_sale = sum(Global_Sales)) %>% ggplot(aes(x = Year, y = total_global_sale, fill = I("#0A8222"))) + geom_col() + labs(title = "Global Sale", subtitle = "In million $", y = "Sale in Millions $") + theme_bw()
+
+```
+Global sales value has the same trend as the number of games sold
+
+Sales Percentage Variation of Different region
+
+```{r}
+vg_data_cleaned %>% 
+  group_by(Year) %>% 
+  summarise(total_NA_sales = sum(NA_Sales),
+            total_EU_sales = sum(EU_Sales),
+            total_JP_sales = sum(JP_Sales),
+            total_other_sales = sum(Other_Sales),
+            total_global_sales = sum(Global_Sales)) %>% 
+  mutate(perc_NA_sales = total_NA_sales/total_global_sales * 100,
+         perc_EU_sales = total_EU_sales/total_global_sales * 100,
+         perc_JP_sales = total_JP_sales/total_global_sales * 100,
+         perc_other_sales = total_other_sales/total_global_sales * 100) %>% 
+  ggplot() +
+  geom_line(aes(x = Year, y = perc_NA_sales, colour = "NA sales"), size = 1) +
+  geom_line(aes(x= Year, y= perc_EU_sales, colour = "EU sales"), size = 1) +
+  geom_line(aes(x= Year, y= perc_JP_sales, colour = "JP sales"), size = 1) +
+  geom_line(aes(x= Year, y= perc_other_sales, colour = "Other sales"), size = 1) +
+  scale_color_manual(values = c ("NA sales" = "#56B4E9", "EU sales" = "#0F40B2", "JP sales" = "#C11E83", "Other sales" = "#0A8222")) +
+  labs(title = "Sales Percentage Variation", subtitle = "Region-wise over the year ", y = "Perc(%)", colour = "Percentage") +
+  theme_bw()
+```
+The plot shows percentage contribution to global sales of different regions and its variation over the period. Initially NA sales was the primary contributor which gradually decreased over the year. JP sales initially increased then was stable for few years and then drastically fell after 1995. EU and Other sales is increasing gradually over the years.
+
+4.3 Evolution of Gaming Platform
+```{r}
+vg_data_cleaned %>%
+  group_by(Year, Platform) %>%
+  summarise(game_count = n()) %>%
+  ggplot(aes(x =Year, y = Platform, fill = game_count)) + geom_tile() + scale_fill_viridis(discrete = FALSE) + labs (title = "Platform heatmap over years", fill = "Game count")+
+  theme_bw()
+```
+summarise () has grouped output by Year. You can override using the '.groups' argument.
+
+The plot shows how the gaming platform evolved over the year. PC gaming is having the heighest run whereas other platforms either became obsolete or was upgraded with time. Currenty only few platforms are active on which games are released. There are few observations which indicate some issue with the data. For example, the above heatmap shows that for PS-V the data is available few years before the data of PS-4 which is not correct. Still this plots give a fair idea of how the platform has evolved over the years.
+
+
+4.5 Top Game and Publisher
+```{r}
+vg_data_cleaned %>%
+  group_by(Year) %>%
+  arrange(desc(Global_Sales)) %>%
+  slice(1) %>%
+  ggplot(aes(y = reorder(Year, -Year), x = Global_Sales, fill= Genre)) +
+  geom_col() + 
+   scale_fill_manual(values=c("#F6573D", "#999999", "#E69F00", "#56B4E9", "#79605B", 
+                             "#0A8222", "#32B491","#0F40B2", "#7B808A", "#9D29D6",
+                             "#C11E83", "#CBDE0B"))+
+  geom_text(aes(label = Name), position = position_dodge2(width = 1), hjust = -0.05, vjust = 0.3) +
+  labs(title = "Top game of the year", subtitle = "Game genre", x = "Global Sales",y ="Year") +
+  theme_classic()
+
+```
+
+The above plot shows the top game each year based on the global sales. It also show the genre of the game. It is clear from the plot that top selling game are from various genre.
+
+```{r}
+vg_data_cleaned %>% 
+  group_by(Publisher) %>% 
+  summarise(title_nos = n()) %>% 
+  arrange(desc(title_nos)) %>% 
+  slice(1:10) %>% 
+  ggplot(aes(x = reorder(Publisher, -title_nos), y = title_nos, fill = Publisher)) +
+  geom_col() +
+  labs(title = "Top 10 Publisher", x = "Publisher", y = "Game count") +
+  theme(axis.text.x = element_text(angle = 45), legend.position = "none",
+        panel.background = element_rect(fill = "white",colour = "black",size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.25, linetype = 'solid',colour = "grey"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "grey"))
+```
+
+The plot shows top 10 Publishers over the entire duration. The top publisher is Electronic Arts followed by Activision.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
